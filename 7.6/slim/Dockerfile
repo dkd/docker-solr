@@ -1,12 +1,12 @@
 
-FROM openjdk:8-jre
+FROM openjdk:11-slim
 
 LABEL maintainer="Martijn Koster \"mak-docker@greenhills.co.uk\""
 LABEL repository="https://github.com/docker-solr/docker-solr"
 
-ARG SOLR_VERSION="6.6.6"
-ARG SOLR_SHA512="3f58b5975108ccfe95347e291a2435f8f35b69a5eeadd182fac5c19b78e6998cefcc3f217831ff9847834952f9e18753532c4982b85ed09d33bd90998753f78c"
-ARG SOLR_KEYS="2085660D9C1FCCACC4A479A3BF160FF14992A24C"
+ARG SOLR_VERSION="7.6.0"
+ARG SOLR_SHA512="d11545c5ac782116b53622130634adfca2d9f85271a6d99c6ae34b1d41e9625fbf8134572ce3f2b7d55b749b34adc05b303cb2d4bb6e3dca73296726dbb21b02"
+ARG SOLR_KEYS="95B01F0E78111D63D331C1A751F0CC22F625308A"
 # If specified, this will override SOLR_DOWNLOAD_SERVER and all ASF mirrors. Typically used downstream for custom builds
 ARG SOLR_DOWNLOAD_URL
 
@@ -16,7 +16,7 @@ ARG SOLR_DOWNLOAD_SERVER
 
 RUN set -ex; \
   apt-get update; \
-  apt-get -y install acl dirmngr gpg lsof procps wget netcat gosu tini; \
+  apt-get -y install acl dirmngr gpg lsof procps wget netcat; \
   rm -rf /var/lib/apt/lists/*
 
 ENV SOLR_USER="solr" \
@@ -28,6 +28,12 @@ ENV SOLR_USER="solr" \
     SOLR_ARCHIVE_URL="https://archive.apache.org/dist/lucene/solr/$SOLR_VERSION/solr-$SOLR_VERSION.tgz" \
     PATH="/opt/solr/bin:/opt/docker-solr/scripts:$PATH"
 
+ENV GOSU_VERSION 1.11
+ENV GOSU_KEY B42F6819007F00F88E364FD4036A9C25BF357DD4
+
+ENV TINI_VERSION v0.18.0
+ENV TINI_KEY 595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7
+
 RUN set -ex; \
   groupadd -r --gid "$SOLR_GID" "$SOLR_GROUP"; \
   useradd -r --uid "$SOLR_UID" --gid "$SOLR_GID" "$SOLR_USER"
@@ -37,7 +43,7 @@ RUN set -ex; \
   mkdir -p "$GNUPGHOME"; \
   chmod 700 "$GNUPGHOME"; \
   echo "disable-ipv6" >> "$GNUPGHOME/dirmngr.conf"; \
-  for key in $SOLR_KEYS; do \
+  for key in $SOLR_KEYS $GOSU_KEY $TINI_KEY; do \
     found=''; \
     for server in \
       ha.pool.sks-keyservers.net \
@@ -55,6 +61,19 @@ RUN set -ex; \
 
 RUN set -ex; \
   export GNUPGHOME="/tmp/gnupg_home"; \
+  pkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
+  wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$pkgArch"; \
+  wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$pkgArch.asc"; \
+  gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \
+  rm /usr/local/bin/gosu.asc; \
+  chmod +x /usr/local/bin/gosu; \
+  gosu nobody true; \
+  wget -O /usr/local/bin/tini "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-$pkgArch"; \
+  wget -O /usr/local/bin/tini.asc "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-$pkgArch.asc"; \
+  gpg --batch --verify /usr/local/bin/tini.asc /usr/local/bin/tini; \
+  rm /usr/local/bin/tini.asc; \
+  chmod +x /usr/local/bin/tini; \
+  tini --version; \
   MAX_REDIRECTS=1; \
   if [ -n "$SOLR_DOWNLOAD_URL" ]; then \
     # If a custom URL is defined, we download from non-ASF mirror URL and allow more redirects and skip GPG step
@@ -87,7 +106,6 @@ RUN set -ex; \
   mkdir -p /opt/solr/server/solr/mycores /opt/solr/server/logs /opt/mysolrhome; \
   sed -i -e "s/\"\$(whoami)\" == \"root\"/\$(id -u) == 0/" /opt/solr/bin/solr; \
   sed -i -e 's/lsof -PniTCP:/lsof -t -PniTCP:/' /opt/solr/bin/solr; \
-  sed -i -e 's/\/solr\///' /opt/solr/server/solr-webapp/webapp/js/angular/services.js && \
   if [ -f "/opt/solr/contrib/prometheus-exporter/bin/solr-exporter" ]; then chmod 0755 "/opt/solr/contrib/prometheus-exporter/bin/solr-exporter"; fi; \
   chmod -R 0755 /opt/solr/server/scripts/cloud-scripts; \
   chown -R "$SOLR_USER:$SOLR_GROUP" /opt/solr /docker-entrypoint-initdb.d /opt/docker-solr; \
