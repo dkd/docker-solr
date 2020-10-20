@@ -13,8 +13,6 @@ Apache Solr is highly reliable, scalable and fault tolerant, providing distribut
 
 Learn more on [Solr's homepage](http://lucene.apache.org/solr/) and in the [Solr Reference Guide](https://lucene.apache.org/solr/guide/).
 
-> [wikipedia.org/wiki/Apache_Solr](https://en.wikipedia.org/wiki/Apache_Solr)
-
 ![logo](https://raw.githubusercontent.com/docker-library/docs/master/solr/logo.png)
 
 # Getting started with the Docker image
@@ -236,6 +234,29 @@ Instead of using this mechanism, you can of course create your own script that d
 
 Other ways of extending the image are to create custom Docker images that inherit from this one.
 
+## Debugging with jattach
+
+The `jcmd`, `jmap` `jstack` tools can be useful for debugging Solr inside the container. These tools are not included with the JRE, but this image includes the [jattach](https://github.com/apangin/jattach) utility which lets you do much of the same.
+
+    Usage: jattach <pid> <cmd> [args ...]
+    
+      Commands: 
+        load : load agent library
+        properties : print system properties
+        agentProperties : print agent properties
+        datadump : show heap and thread summary
+        threaddump : dump all stack traces (like jstack)
+        dumpheap : dump heap (like jmap)
+        inspectheap : heap histogram (like jmap -histo)
+        setflag : modify manageable VM flag
+        printflag : print VM flag
+        jcmd : execute jcmd command
+    
+Example comands to do a thread dump and get heap info for PID 10:
+
+    jattach 10 threaddump
+    jattach 10 jcmd GC.heap_info
+
 # Updating from Docker-solr5-7 to 8
 
 For Solr 8, the docker-solr distribution switched from just extracting the Solr tar, to using the [service installation script](https://lucene.apache.org/solr/guide/7_7/taking-solr-to-production.html#service-installation-script). This was done for various reasons: to bring it in line with the recommendations by the Solr Ref Guide, to make it easier to mount volumes, and because we were [asked to](https://github.com/docker-solr/docker-solr/issues/173).
@@ -266,15 +287,19 @@ This repository is available on [github.com/docker-solr/docker-solr](https://git
 
 Solr is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
-This repository is also licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+This repository is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
-Copyright 2015-2019 Martijn Koster
+Copyright 2015-2020 The Apache Software Foundation
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+
+# Releasing
+
+When a new version of Apache Solr is released, a new docker image can be released by following the procedure outlined in [update.md](./update.md). Normally you open a new issue to volunteer for the release, and then file a PR once you have completed all the steps and run the tests.
 
 # User Feedback
 
@@ -287,3 +312,7 @@ For general questions about Solr, see the [Community information](http://lucene.
 ## Contributing
 
 If you want to contribute to Solr, see the [Solr Resources](http://lucene.apache.org/solr/resources.html#community).
+
+# History
+
+This project was started in 2015 by [Martijn Koster](https://github.com/makuk66). In 2019 maintainership and copyright was transferred to the Apache Lucene/Solr project. Many thanks to Martijn for all your contributions over the years!
